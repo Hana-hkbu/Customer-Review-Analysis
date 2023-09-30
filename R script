@@ -1,0 +1,212 @@
+setwd("C:/Users/12555/Desktop")
+#Data tyding
+a=read.csv("apple.csv")
+str(a)
+View(a)
+
+# select finished data
+a_sub=subset(a,a$Finished=="True")
+
+# select useful variables
+a_sub=subset(a_sub,select = c(18:39))
+
+# replace "" and "undefined" with NA
+a_sub[a_sub==""|a_sub=="undefined"]=NA
+
+# change structure
+f=c(1,2,3,4,6,7,9,10,11,12,13,14,15,17,19,20,21,22)
+a_sub[,f]=lapply(a_sub[,f],as.factor)
+a_sub[,-f]=lapply(a_sub[,-f],as.numeric)
+
+# replace NA with the median
+a_sub$Q5[is.na(a_sub$Q5)]=median(a_sub$Q5,na.rm=T)
+a_sub$Q8_1[is.na(a_sub$Q8_1)]=median(a_sub$Q8_1,na.rm=T)
+a_sub$Q13_32[is.na(a_sub$Q13_32)]=median(a_sub$Q13_32,na.rm=T)
+a_sub$Q15[is.na(a_sub$Q15)]=median(a_sub$Q15,na.rm=T)
+
+# select completed data
+a_sub=a_sub[complete.cases(a_sub$Q4),]
+View(a_sub)
+
+#Analysis 1-3
+library(ggplot2)
+# Show the distribution of Age and Income
+table(a_sub$Q2, a_sub$Q3)
+
+# Analysis 1: No. of Apple鈥檚 products (Q4) and Age (Q2)
+t1 <- table(a_sub$Q2, a_sub$Q4)
+t1_df <- as.data.frame.matrix(t1)
+t1_df["Sum",] <- colSums(t1)
+t1_df
+
+## Null hypothesis (H0): Age and the number of Apple鈥檚 product are unrelated.
+## Alternative hypothesis (H1): Age and the number of Apple鈥檚 product are related.
+chisq.test(table(a_sub$Q4, a_sub$Q2))
+## P-value > 0.05
+## Not to reject H0.
+## So we conclude age and the number of Apple鈥檚 product do not have a significant relationship.
+
+## Visualize the response
+ggplot(a_sub, aes(Q4, fill=factor(Q2))) +
+  geom_bar(position = "dodge", colour = "black") +
+  labs(x = "No. of Apple's product", y = "Count"
+       , title = "No. of Apple鈥檚 products and Age"
+       , fill = "Age Range")
+
+## Correlation test
+Age <- as.numeric(a_sub$Q2)
+ProductNo <- as.numeric(a_sub$Q4)
+
+## H0: True correlation is not equal to 0
+cor.test(Age, ProductNo)
+## P-value > 0.05
+## Not to reject H0.
+## So we conclude age and the number of Apple鈥檚 product do not have a significant relationship.
+
+
+# Analysis 2: No. of Apple product (Q4) & Income (Q3)
+unique(a_sub$Q3)
+a_sub$Q3 <- factor(a_sub$Q3
+                   , levels = c("Less than 5,000HKD"
+                                , "5,000HKD - 10,000HKD"
+                                , "10,000HKD - 50,000HKD"))
+## Visualize the response
+ggplot(a_sub, aes(Q4, fill=factor(Q3))) +
+  geom_bar(position = "dodge", colour = "black") +
+  labs(x = "No. of Apple's product", y = "Count"
+       , title = "No. of Apple鈥檚 products and Income"
+       , fill = "Income Range")
+table(a_sub$Q3, a_sub$Q4)
+
+## Correlation test
+Income <- as.numeric(a_sub$Q3)
+ProductNo <- as.numeric(a_sub$Q4)
+## H0: True correlation is not equal to 0
+cor.test(ProductNo, Income)
+## P-value > 0.05
+## Not to reject H0.
+## So there is no relationship  between income and the no. of Apple鈥檚 product.
+
+# Analysis 3: No. of Apple鈥檚 products (Q4) and Comments on Price (Q7)
+a_sub$Q7 <- factor(a_sub$Q7
+                   , levels = c("Too cheap", "Cheap"
+                                , "Affordable", "Expensive"
+                                , "Too expensive"))
+ggplot(a_sub, aes(Q4, fill=factor(Q7))) +
+  geom_bar(position = "dodge", colour = "black") +
+  labs(x = "No. of Apple's product", y = "Count"
+       , title = "No. of Apple鈥檚 products and Price"
+       , fill = "Price")
+
+## H0: Comments on Price and the number of Apple鈥檚 product are unrelated.
+## H1: Comments on Price and the number of Apple鈥檚 product are related.
+chisq.test(table(a_sub$Q7, a_sub$Q4))
+## P-value > 0.05
+## Not to reject H0.
+## So we conclude comments on price and the number of Apple鈥檚 product do not have a significant relationship.
+
+## Correlation test
+Price <- as.numeric(a_sub$Q7)
+cor.test(ProductNo, Price)
+
+## Polychoric Correlation
+library(psych)
+a_sub$ProductNo <- ProductNo
+a_sub$Price <- Price
+polychoric(a_sub[,c("ProductNo","Price")])
+## The polychoric correlation coefficient is -0.31.
+
+#Analysis 4 and 5
+library(ggplot2)
+with(a_sub,prop.table(table(ProductNo,Airdrop),margin=1))
+table <- as.data.frame(table(a_sub$Q4,a_sub$Q12))
+ggplot(table,aes(x=Var1, y= Freq, fill=Var2))+               
+  geom_col(position='dodge')+
+  labs(x="Number of Products",y="Count",fill="Airdrop")+
+  ggtitle("Numbers of Porducts and Views about Airdrop")
+ggplot(a_sub,aes(Q16,fill=Q4))+
+  geom_bar(position='fill')+
+  labs(x="Attributes",fill="Number of Products")+
+  ggtitle("Attracting Attributes")
+ggplot(a_sub,aes(Q16))+
+  geom_bar(fill="orange",colour="black")+
+  labs(x="Attributes")
+unique(a_sub$Q12)
+Airdrop <- rep(NA, length(a_sub$Q12))
+Airdrop[a_sub$Q12=="Definitely not"]      <- 1
+Airdrop[a_sub$Q12=="Probably not"]      <- 2
+Airdrop[a_sub$Q12=="Might or might not"] <- 3
+Airdrop[a_sub$Q12=="Probably yes"] <- 4
+Airdrop[a_sub$Q12=="Definitely yes"] <- 5
+a_sub$Airdrop <- Airdrop
+unique(a_sub$Q4)
+ProductNo <- rep(NA, length(a_sub$Q4))
+ProductNo[a_sub$Q4=="1"]      <- 1
+ProductNo[a_sub$Q4=="2"]      <- 2
+ProductNo[a_sub$Q4=="3"] <- 3
+ProductNo[a_sub$Q4=="4"] <- 4
+ProductNo[a_sub$Q4=="More than4"] <- 5
+a_sub$ProductNo <- ProductNo
+df <- subset(a_sub, as.numeric(ProductNo) & as.numeric(Airdrop))
+library(psych)
+polychoric(df[,c('Airdrop','ProductNo')] )
+
+#Analysis 6
+setwd("C:/Users/12555/Desktop")
+library(dplyr)
+library(coefplot)
+
+data1=read.csv("apple.csv")
+col1=colnames(data1)
+
+data2=read.csv("apple.csv",header = F,skip = 3)
+colnames(data2)=col1
+
+data=data2[,c("Q4","Q8_1","Q9_3","Q10","Q15")]
+
+colnames(data)=c("Number.of.apple.products","Sat_quality","Sat_after.sales.service",
+                  "Sat_design","Sat_environment.friendly")
+
+unique(data$Sat_after.sales.service)
+
+data =data %>%
+  dplyr::mutate(Sat_after.sales.service = as.character(Sat_after.sales.service)) %>%
+  dplyr::mutate(Sat_after.sales.service=ifelse(Sat_after.sales.service=="Extremely Satisfied",5,Sat_after.sales.service))  %>%
+  dplyr::mutate(Sat_after.sales.service=ifelse(Sat_after.sales.service=="Satisfied",4,Sat_after.sales.service)) %>%
+  dplyr::mutate(Sat_after.sales.service=ifelse(Sat_after.sales.service=="Common",3,Sat_after.sales.service)) %>%
+  dplyr::mutate(Sat_after.sales.service=ifelse(Sat_after.sales.service=="Dissatisfied",2,Sat_after.sales.service)) %>%
+  dplyr::mutate(Sat_after.sales.service=ifelse(Sat_after.sales.service=="Extremely Dissatisfied",1,Sat_after.sales.service)) %>%
+  dplyr::mutate(Sat_after.sales.service = as.numeric(Sat_after.sales.service))
+
+summary(data$Sat_design)
+
+data$Sat_design=as.factor(data$Sat_design)
+data$Number.of.apple.products=as.factor(data$Number.of.apple.products)
+
+
+data[data == 'Quite appealling' ] ='4'
+data[data == 'Appealling' ] ='3'
+data[data == 'Common' ] ='2'
+data[data == 'Ugly' ]= '1'
+data[data == 'More than4' ] ='5'
+
+data$Sat_design=as.numeric(data$Sat_design)
+data$Number.of.apple.products=as.numeric(data$Number.of.apple.products)
+
+data=na.omit(data) # no missing values
+
+model1=lm(Number.of.apple.products~
+             Sat_quality+Sat_after.sales.service+
+             Sat_design+Sat_environment.friendly,data=data)
+
+summary(model1)
+
+confint(model1)
+
+coefplot(model1,
+         intercept=F,
+         outerCI=1.96,
+         lwdOuter=1.5,
+         ylab= "Satisfied rating of Apple",
+         xlab="Impact on number of owned Apple products",
+         title="Coefficient Plot")
